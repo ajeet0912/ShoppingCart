@@ -1,0 +1,58 @@
+﻿@model IEnumerable<Product>
+<div class="container p-4 border">
+    <div class="row pb-2">
+        <div class="col">
+            <h1 class="text-primary">Product List</h1>
+        </div>
+        <div class="col text-end pt-1">
+            <a asp-controller="Product" asp-action="Create" class="btn btn-outline-primary">
+                <i class="bi bi-plus-square-fill"></i>Create New Product
+            </a>
+        </div>
+    </div>
+    @if(Model !=null && Model.Count() > 0)
+    {
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>
+                        Name
+                    </th>
+                    <th>
+                        Prict
+                    </th>
+                    <th>
+                        Description
+                    </th>
+                    <th>
+                        Action
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>
+                            @item.Name
+                        </td>
+                        <td>@((item.Price).ToString("c"))</td>
+                        <td>@item.Description</td>
+                        <td>
+                            <a asp-controller="Product" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-primary">
+                                <i class="bi bi-pencil-square"></i>Edit
+                            </a>
+                            <a asp-controller="Product" asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger">
+                                <i class="bi bi-trash-fill"></i>Delete
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <div class="alert alert-danger">Product Record not exists.</div>
+    }
+</div>
