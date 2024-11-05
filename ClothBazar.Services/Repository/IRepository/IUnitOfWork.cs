@@ -9,6 +9,8 @@ namespace ClothBazar.Services.Repository.IRepository
     public interface IUnitOfWork
     {
         IProductRepository ProductRepository { get; }
+        IShoppingCartRepository ShoppingCartRepository { get; }
+        IApplicationUserRepository ApplicationUserRepository { get; }
         Task SaveAsync();
     }
 }

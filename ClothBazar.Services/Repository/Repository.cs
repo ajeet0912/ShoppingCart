@@ -34,12 +34,19 @@ namespace ClothBazar.Services.Repository
             _dbSet.RemoveRange(entity);
         }
 
-        public async Task<IEnumerable<T>> GetAllAsync(Expression<Func<T, bool>>? filter)
+        public async Task<IEnumerable<T>> GetAllAsync(Expression<Func<T, bool>>? filter, string? includeProperties)
         {
             IQueryable<T> query = _dbSet;
             if (filter != null)
             {
                 query = query.Where(filter);
+            }
+            if (includeProperties != null)
+            {
+                foreach (var inlcudeProp in includeProperties.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    query = query.Include(inlcudeProp);
+                }
             }
 
             return await query.ToListAsync();

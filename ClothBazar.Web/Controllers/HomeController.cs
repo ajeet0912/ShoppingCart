@@ -3,6 +3,8 @@ using System.Diagnostics;
 using ClothBazar.Entities.Models;
 using ClothBazar.Services.Repository.IRepository;
 using ClothBazar.Web.Models;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace ClothBazar.Web.Controllers
 {
@@ -35,6 +37,45 @@ namespace ClothBazar.Web.Controllers
             }
         }
 
+
+        [HttpGet]
+        public async Task<IActionResult> Details(int productId)
+        {
+            ShoppingCart cart = new()
+            {
+                Product = await _unitOfWork.ProductRepository.GetAsync(x => x.Id == productId),
+                Count = 1,
+                ProductId = productId
+            };
+            return View(cart);
+        }
+
+
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> Details(ShoppingCart shoppingCart)
+        {
+            var claimIdentity = (ClaimsIdentity)User.Identity;
+            var userId = claimIdentity.FindFirst(ClaimTypes.NameIdentifier).Value;
+            shoppingCart.ApplicationUserId = userId;
+
+            ShoppingCart cartdb = await _unitOfWork.ShoppingCartRepository.GetAsync(x => x.ApplicationUserId == userId && x.ProductId == shoppingCart.ProductId);
+            if (cartdb !=null)
+            {
+                // cart exists.
+                cartdb.Count += shoppingCart.Count;
+                await _unitOfWork.ShoppingCartRepository.UpdateAsync(cartdb);
+            }
+            else
+            {
+                // create new
+                await _unitOfWork.ShoppingCartRepository.AddAsync(shoppingCart);
+            }
+            await _unitOfWork.SaveAsync();
+
+            TempData["success"] = "Cart updated successfully";
+            return RedirectToAction(nameof(Index));
+        }
 
         public IActionResult Privacy()
         {

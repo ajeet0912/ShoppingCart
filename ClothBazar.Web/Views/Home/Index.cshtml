@@ -1,4 +1,4 @@
-﻿@model IEnumerable<ClothBazar.Entities.Models.Product>
+﻿@model IEnumerable<Product>
 @{
     ViewData["Title"] = "Home Page";
 }
@@ -27,7 +27,7 @@
                         </div>
                     </div>
                     <div>
-                        <a href="" class="btn btn-primary bg-gradient border-0 form-control">Add To Cart</a>
+                        <a asp-action="Details" asp-controller="Home" asp-route-productId="@product.Id" class="btn btn-primary bg-gradient border-0 form-control">Details</a>
                     </div>
                 </div>
             </div>
