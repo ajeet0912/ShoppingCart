@@ -22,28 +22,82 @@ namespace ClothBazar.Web.Controllers
 
 
         [Authorize]
+        [HttpGet]
         public async Task<IActionResult> Index()
         {
             try
             {
                 var claimIdentity = (ClaimsIdentity)User.Identity;
                 var userId = claimIdentity.FindFirst(ClaimTypes.NameIdentifier).Value;
-                ShoppingCartViewModels = new()
+
+                // Retrieve shopping cart items for the logged-in user
+                var shoppingCartItems = await _unitOfWork.ShoppingCartRepository.GetAllAsync(x => x.ApplicationUserId == userId, includeProperties: "Product");
+
+                // Calculate total order value
+                decimal totalOrderValue = shoppingCartItems.Sum(x => x.Product.Price * x.Count);
+
+                var model = new ShoppingCartViewModels
                 {
-                    ListShoppingCart = await _unitOfWork.ShoppingCartRepository.GetAllAsync(x => x.ApplicationUserId == userId, 
-                    includeProperties: "Product")
+                    ListShoppingCart = shoppingCartItems,
+                    OrderTotal = totalOrderValue,
+                    Coupon = new Coupon() // Initialize an empty list for coupons
                 };
-                foreach (var cart in ShoppingCartViewModels.ListShoppingCart)
-                {
-                    ShoppingCartViewModels.OrderTotal += (cart.Product.Price * cart.Count);
-                }
-                return View(ShoppingCartViewModels);
+
+                return View(model);
             }
             catch (Exception ex)
             {
+                TempData["ErrorMessage"] = "An error occurred while fetching your cart.";
                 return View(new ShoppingCartViewModels());
             }
         }
+
+
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> Index(ShoppingCartViewModels model)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(model.Coupon.Code))
+                {
+                    TempData["ErrorMessage"] = "No valid coupon codes provided.";
+                    return View(model);
+                }
+
+                string validationMessage = await _unitOfWork.ShoppingCartRepository.ValidateCouponAsync(model.Coupon.Code);
+                if (validationMessage != "Coupon is valid.")
+                {
+                    TempData["ErrorMessage"] = validationMessage;
+                    return RedirectToAction("Index");
+                }
+
+                var claimIdentity = (ClaimsIdentity)User.Identity;
+                var userId = claimIdentity.FindFirst(ClaimTypes.NameIdentifier).Value;
+
+                // Retrieve shopping cart items for the logged-in user
+                var shoppingCartItems = await _unitOfWork.ShoppingCartRepository.GetAllAsync(x => x.ApplicationUserId == userId, includeProperties: "Product");
+
+                // Calculate total order value
+                decimal totalOrderValue = shoppingCartItems.Sum(x => x.Product.Price * x.Count);
+
+                model.ListShoppingCart = shoppingCartItems;
+                model.OrderTotal = totalOrderValue;
+
+                // Apply the discount based on coupon type
+                decimal discount = await _unitOfWork.ShoppingCartRepository.ApplyCouponAsync(model.Coupon.Code, model);
+                model.OrderTotal -= discount;
+                model.Coupon.DiscountValue = discount;
+
+                return View(model);
+            }
+            catch (Exception)
+            {
+                TempData["ErrorMessage"] = "An error occurred while applying the coupon.";
+                return View(new ShoppingCartViewModels());
+            }
+        }
+
 
         public async Task<IActionResult> Plus(int cartId)
         {
@@ -79,119 +133,5 @@ namespace ClothBazar.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        [HttpGet]
-        public async Task<IActionResult> Create()
-        {
-            return View();
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Create(ShoppingCart shoppingCart)
-        {
-            if (ModelState.IsValid)
-            {
-                if (shoppingCart != null)
-                {
-                    await _unitOfWork.ShoppingCartRepository.AddAsync(shoppingCart);
-                    await _unitOfWork.SaveAsync();
-                    TempData["success"] = "ShoppingCart created successfully";
-                    return RedirectToAction(nameof(Index));
-                }
-                else
-                {
-                    TempData["error"] = "Error encountered.";
-                    return View(shoppingCart);
-                }
-            }
-            TempData["error"] = "Error encountered.";
-            return View(shoppingCart);
-        }
-
-        
-
-        [HttpGet]
-        public async Task<IActionResult> Edit(int id)
-        {
-            
-            if (id != 0)
-            {
-                var shoppingCart = await _unitOfWork.ShoppingCartRepository.GetAsync(x => x.Id == id, false);
-                return View(shoppingCart);
-            }
-            TempData["error"] = "Error encountered.";
-            return View();
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Edit(ShoppingCart shoppingCart)
-        {
-            try
-            {
-                if (ModelState.IsValid)
-                {
-                    ShoppingCart dbPoduct = await _unitOfWork.ShoppingCartRepository.GetAsync(x => x.Id == shoppingCart.Id, false);
-                    if (dbPoduct != null)
-                    {
-                        await _unitOfWork.ShoppingCartRepository.UpdateAsync(dbPoduct);
-                        await _unitOfWork.SaveAsync();
-                        TempData["success"] = "ShoppingCart updated successfully";
-                        return RedirectToAction(nameof(Index));
-                    }
-                    else
-                    {
-                        TempData["error"] = "Error encountered.";
-                        return View(shoppingCart);
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                TempData["error"] = "Error encountered.";
-                return View(shoppingCart);
-            }
-            TempData["error"] = "Error encountered.";
-            return View(shoppingCart);
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> Delete(int id)
-        {
-
-            if (id != 0)
-            {
-                var shoppingCart = await _unitOfWork.ShoppingCartRepository.GetAsync(x => x.Id == id, false);
-                return View(shoppingCart);
-            }
-            TempData["error"] = "Error encountered.";
-            return View();
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Delete(ShoppingCart shoppingCart)
-        {
-            try
-            {
-                ShoppingCart dbPoduct = await _unitOfWork.ShoppingCartRepository.GetAsync(x => x.Id == shoppingCart.Id);
-                if (dbPoduct != null)
-                {
-                    await _unitOfWork.ShoppingCartRepository.DeleteAsync(dbPoduct);
-                    await _unitOfWork.SaveAsync();
-                    TempData["success"] = "ShoppingCart deleted successfully";
-                    return RedirectToAction(nameof(Index));
-                }
-                else
-                {
-                    TempData["error"] = "Error encountered.";
-                    return View(shoppingCart);
-                }
-            }
-            catch (Exception)
-            {
-                TempData["error"] = "Error encountered.";
-                return View(shoppingCart);
-            }
-            TempData["error"] = "Error encountered.";
-            return View(shoppingCart);
-        }
     }
 }

@@ -17,6 +17,7 @@ namespace ClothBazar.Data
         public DbSet<Coupon> Coupons { get; set; }
         public DbSet<ApplicationUser> ApplicationUsers { get; set; }
         public DbSet<ShoppingCart> ShoppingCarts { get; set; }
+        public DbSet<CouponApplication> CouponApplications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -30,9 +31,29 @@ namespace ClothBazar.Data
             );
 
             builder.Entity<Coupon>().HasData(
-                new Coupon { Id = 1, Code = "CDP10", DiscountPercentage = 10, ExpiryDate = DateTime.Now.AddDays(10), IsActive = true, FreeItems = 0 },
-                new Coupon { Id = 2, Code = "CDPCAP", DiscountPercentage = 10, ExpiryDate = DateTime.Now.AddDays(10), IsActive = true, FreeItems = 0 }
-            );
+            new Coupon
+            {
+                Id = 1,
+                Code = "CDP10", // Coupon Code
+                DiscountType = (int)DiscountType.AllItemsDiscount, // Type-1: 10% off all items
+                DiscountValue = 10, // 10% discount
+                ExpiryDate = new DateTime(2025, 12, 31), // Expiry date
+                IsActive = true,  // Active coupon
+                UsageLimit = 1000, // Can be used up to 1000 times
+                TimesUsed = 0 // No uses yet
+            },
+            new Coupon
+            {
+                Id = 2,
+                Code = "CDPCAP", // Coupon Code
+                DiscountType = (int)DiscountType.ProductSpecificDiscount, // Type-2: Buy 2 Jeans, Get 1 Cap Free
+                DiscountValue = 0, // Not applicable here, as the discount is based on product pairs
+                ExpiryDate = new DateTime(2025, 12, 31), // Expiry date
+                IsActive = true,  // Active coupon
+                UsageLimit = 500, // Can be used up to 500 times
+                TimesUsed = 0 // No uses yet
+            }
+        );
 
         }
     }
